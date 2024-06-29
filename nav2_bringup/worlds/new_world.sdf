@@ -1,0 +1,34 @@
+<?xml version="1.0" ?>
+<sdf version="1.7">
+    <world name="new_world">
+        <include>
+            <uri>https://fuel.gazebosim.org/1.0/OpenRobotics/models/Ground Plane</uri>
+        </include>
+
+        <model name="border">
+            <static>true</static>
+            <link name="link">
+                <collision name="collision">
+                    <geometry>
+                        <box>
+                            <size>0.1 0.5 30</size>
+                        </box>
+                    </geometry>
+                </collision>
+                <visual name="visual">
+                    <geometry>
+                        <box>
+                            <size>0.1 0.5 30</size>
+                        </box>
+                    </geometry>
+                    <material>
+                        <script>
+                            <uri>file://media/materials/scripts/gazebo.material</uri>
+                            <name>Gazebo/Red</name>
+                        </script>
+                    </material>
+                </visual>
+            </link>
+        </model>
+    </world>
+</sdf>
