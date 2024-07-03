@@ -31,7 +31,8 @@ from launch.actions import (
     RegisterEventHandler,
     GroupAction,  # Added
 )
-from launch.substitutions import Command, LaunchConfiguration, PythonExpression, NotEqualsSubstitution  # Added
+from launch.substitutions import Command, LaunchConfiguration, PythonExpression, NotEqualsSubstitution # Added
+from launch_ros.substitutions import FindPackageShare  # Added
 from launch_ros.actions import Node, LoadComposableNodes, PushRosNamespace  # Added
 from launch_ros.descriptions import ComposableNode  # Added
 from nav2_common.launch import RewrittenYaml  # Added
@@ -65,6 +66,8 @@ def generate_launch_description():
     mask_yaml_file = LaunchConfiguration('mask')
     container_name = LaunchConfiguration('container_name')
     container_name_full = (namespace, '/', container_name)
+
+    pkg_share = FindPackageShare(package='navigation2').find('nav2_bt_navigator')
 
     # Launch configuration variables specific to simulation
     rviz_config_file = LaunchConfiguration('rviz_config_file')
@@ -281,7 +284,10 @@ def generate_launch_description():
      # Make re-written yaml
     param_substitutions = {
         'use_sim_time': use_sim_time,
-        'yaml_filename': mask_yaml_file}
+        'yaml_filename': mask_yaml_file,
+        'default_nav_to_pose_bt_xml': os.path.join(pkg_share, 'behavior_trees', 'navigate_to_pose_w_replanning_and_recovery_2.xml'),
+        'default_nav_through_poses_bt_xml': os.path.join(pkg_share, 'behavior_trees', 'navigate_through_poses_w_replanning_and_recovery_2.xml')
+        }
 
     configured_params = RewrittenYaml(
         source_file=params_file,
