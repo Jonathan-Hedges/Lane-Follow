@@ -299,8 +299,8 @@ def generate_launch_description():
         condition=IfCondition(PythonExpression(['not ', use_composition])),
         actions=[
             Node(
-                package='nav2_map_server',
-                executable='map_server',
+                package='nav2_bringup',
+                executable='keepout_pub',
                 name='filter_mask_server',
                 namespace=namespace,
                 output='screen',
