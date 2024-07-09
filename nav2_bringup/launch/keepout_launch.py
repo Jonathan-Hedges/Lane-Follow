@@ -106,7 +106,7 @@ def generate_launch_description():
 
     declare_map_yaml_cmd = DeclareLaunchArgument(
         'map',
-        default_value=os.path.join(bringup_dir, 'maps', 'map_1719395711.yaml'),  # Try warehouse.yaml!
+        default_value=os.path.join(bringup_dir, 'maps', 'zone_free.yaml'),  # Try warehouse.yaml!
         description='Full path to map file to load',
     )
 

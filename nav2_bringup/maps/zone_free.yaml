@@ -1,4 +1,4 @@
-image: map_1719395711.pgm
+image: zone_free.pgm
 mode: trinary
 resolution: 0.05
 origin: [-1.33, -17.6, 0]
