@@ -58,7 +58,7 @@ class MapServer(Node):
         self.load_map_service = self.create_service(
             LoadMap, service_prefix + self.load_map_service_name, self.load_map_callback)
         
-                # Only try to load map if parameter was set
+        # Only try to load map if parameter was set
         if self.map_yaml_file:
             # Initialize response for LoadMap service
             response = LoadMap.Response()

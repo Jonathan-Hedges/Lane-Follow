@@ -37,6 +37,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/ClearEntireCostmap.srv"
   "srv/ManageLifecycleNodes.srv"
   "srv/LoadMap.srv"
+  "srv/UpdateMap.srv"
   "srv/SaveMap.srv"
   "srv/SetInitialPose.srv"
   "srv/ReloadDockDatabase.srv"

@@ -46,6 +46,7 @@
 
 #include "nav2_map_server/map_server.hpp"
 
+#include <vector>
 #include <string>
 #include <memory>
 #include <fstream>
@@ -55,6 +56,9 @@
 #include "yaml-cpp/yaml.h"
 #include "lifecycle_msgs/msg/state.hpp"
 #include "nav2_map_server/map_io.hpp"
+#include "nav2_util/robot_utils.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+
 
 using namespace std::chrono_literals;
 using namespace std::placeholders;
@@ -83,9 +87,33 @@ MapServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
   RCLCPP_INFO(get_logger(), "Configuring");
 
   // Get the name of the YAML file to use (can be empty if no initial map should be used)
-  std::string yaml_filename = get_parameter("yaml_filename").as_string();
+  yaml_filename = get_parameter("yaml_filename").as_string();
+  // std::string yaml_string = get_parameter("yaml_filenames").as_string();
   std::string topic_name = get_parameter("topic_name").as_string();
   frame_id_ = get_parameter("frame_id").as_string();
+
+  // Example declaration, adjust the types according to your needs
+  std::vector<std::array<int, 4>> zones = {
+    {3, 368, 93, 458},
+    {202, 6, 292, 96},
+    {5, 680, 96, 766},
+    {564, 2, 684, 92},
+    {566, 629, 686, 729}
+  };
+
+  std::string file_prefix = yaml_filename.substr(0, yaml_filename.find_last_of("/"));
+  std::vector<std::string> zone_yamls = {
+    file_prefix + "/keepout_zone1.yaml",
+    file_prefix + "/keepout_zone2.yaml",
+    file_prefix + "/keepout_zone3.yaml",
+    file_prefix + "/keepout_zone4.yaml",
+    file_prefix + "/keepout_zone5.yaml"
+  };
+
+  // Combine the datasets
+  for (size_t i = 0; i < zones.size(); ++i) {
+      combined_zones.push_back({zones[i], zone_yamls[i]});
+  }
 
   // only try to load map if parameter was set
   if (!yaml_filename.empty()) {
@@ -103,6 +131,10 @@ MapServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
       "yaml-filename parameter is empty, set map through '%s'-service",
       load_map_service_name_.c_str());
   }
+  RCLCPP_INFO(
+    get_logger(),
+    "yaml-filename is %s",
+    yaml_filename.c_str());
 
   // Make name prefix for services
   const std::string service_prefix = get_name() + std::string("/");
@@ -111,6 +143,14 @@ MapServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
   occ_service_ = create_service<nav_msgs::srv::GetMap>(
     service_prefix + std::string(service_name_),
     std::bind(&MapServer::getMapCallback, this, _1, _2, _3));
+
+  // Create a service that provides the occupancy grid
+  update_map_service_ = create_service<nav2_msgs::srv::UpdateMap>(
+    service_prefix + std::string(update_map_service_name_),
+    std::bind(&MapServer::updateMapCallback, this, _1, _2, _3));
+
+  pose_subscriber_ = this->create_subscription<geometry_msgs::msg::PoseStamped>(
+    "/acml_pose", 10, std::bind(&MapServer::poseCallback, this, _1));
 
   // Create a publisher using the QoS settings to emulate a ROS1 latched topic
   occ_pub_ = create_publisher<nav_msgs::msg::OccupancyGrid>(
@@ -214,6 +254,42 @@ void MapServer::loadMapCallback(
   }
 }
 
+void MapServer::updateMapCallback(
+  const std::shared_ptr<rmw_request_id_t>/*request_header*/,
+  const std::shared_ptr<nav2_msgs::srv::UpdateMap::Request> /*request*/,
+  std::shared_ptr<nav2_msgs::srv::UpdateMap::Response> response)
+{
+  // if not in ACTIVE state, ignore request
+  if (get_current_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
+    RCLCPP_WARN(
+      get_logger(),
+      "Received UpdateMap request but not in ACTIVE state, ignoring!");
+    response->result = response->RESULT_UNDEFINED_FAILURE;
+    return;
+  }
+  RCLCPP_INFO(get_logger(), "Handling UpdateMap request");
+
+  // Example: Update the map based on some internal logic or data
+  // This is a placeholder for your map updating logic
+  bool map_updated = updateMapInternally(response);
+
+  if (map_updated) {
+    // Assuming msg_ is updated by updateMapInternally() and ready to be published
+    auto occ_grid = std::make_unique<nav_msgs::msg::OccupancyGrid>(msg_);
+    occ_pub_->publish(std::move(occ_grid));  // publish updated map
+    response->result = response->RESULT_SUCCESS; // Indicate success
+  } else {
+    // Handle failure to update map
+    RCLCPP_ERROR(get_logger(), "Failed to update map.");
+    response->result = response->RESULT_UNDEFINED_FAILURE;
+  }
+}
+
+void MapServer::poseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg)
+{
+  latest_pose_ = msg;
+}
+
 bool MapServer::loadMapResponseFromYaml(
   const std::string & yaml_file,
   std::shared_ptr<nav2_msgs::srv::LoadMap::Response> response)
@@ -240,6 +316,32 @@ bool MapServer::loadMapResponseFromYaml(
   return true;
 }
 
+bool MapServer::updateMapResponseFromYaml(
+  const std::string & yaml_file,
+  std::shared_ptr<nav2_msgs::srv::UpdateMap::Response> response)
+{
+  switch (loadMapFromYaml(yaml_file, msg_)) {
+    case MAP_DOES_NOT_EXIST:
+      response->result = nav2_msgs::srv::UpdateMap::Response::RESULT_MAP_DOES_NOT_EXIST;
+      return false;
+    case INVALID_MAP_METADATA:
+      response->result = nav2_msgs::srv::UpdateMap::Response::RESULT_INVALID_MAP_METADATA;
+      return false;
+    case INVALID_MAP_DATA:
+      response->result = nav2_msgs::srv::UpdateMap::Response::RESULT_INVALID_MAP_DATA;
+      return false;
+    case LOAD_MAP_SUCCESS:
+      // Correcting msg_ header when it belongs to specific node
+      updateMsgHeader();
+
+      map_available_ = true;
+      response->map = msg_;
+      response->result = nav2_msgs::srv::UpdateMap::Response::RESULT_SUCCESS;
+  }
+
+  return true;
+}
+
 void MapServer::updateMsgHeader()
 {
   msg_.info.map_load_time = now();
@@ -247,7 +349,39 @@ void MapServer::updateMsgHeader()
   msg_.header.stamp = now();
 }
 
-}  // namespace nav2_map_server
+bool MapServer::updateMapInternally(std::shared_ptr<nav2_msgs::srv::UpdateMap::Response> response)
+{
+    std::string selected_yaml;
+    if (latest_pose_ != nullptr) {
+        double x = latest_pose_->pose.position.x;
+        double y = latest_pose_->pose.position.y;
+        // Iterate over combined_zones instead of filename_zones
+        for (const auto& zone_pair : combined_zones) {
+            const auto& zone = zone_pair.first; // This is the std::array<int, 4>
+            if (x >= zone[0] && x <= zone[2] && y >= zone[1] && y <= zone[3]) {
+                selected_yaml = zone_pair.second; // This is the std::string (YAML file path)
+                break;
+            }
+        }
+    }
+    if (selected_yaml.empty()) {
+        // Handle the case where no YAML is selected
+        response->result = nav2_msgs::srv::UpdateMap::Response::RESULT_MAP_DOES_NOT_EXIST;
+        return false; // Assuming you want to return false if no YAML is selected
+    }
+
+    // Assuming updateMapResponseFromYaml is a function that returns a bool
+    // indicating success or failure
+    if (!updateMapResponseFromYaml(selected_yaml, response)) {
+        response->result = nav2_msgs::srv::UpdateMap::Response::RESULT_INVALID_MAP_DATA;
+        return false;
+    }
+
+    response->result = nav2_msgs::srv::UpdateMap::Response::RESULT_SUCCESS;
+    return true;
+}
+
+}
 
 #include "rclcpp_components/register_node_macro.hpp"
 

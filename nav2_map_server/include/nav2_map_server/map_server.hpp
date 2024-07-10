@@ -15,15 +15,20 @@
 #ifndef NAV2_MAP_SERVER__MAP_SERVER_HPP_
 #define NAV2_MAP_SERVER__MAP_SERVER_HPP_
 
+#include <vector>
 #include <string>
+#include <array>
+#include <utility>
 #include <memory>
 #include <functional>
 
 #include "rclcpp/rclcpp.hpp"
 #include "nav2_util/lifecycle_node.hpp"
 #include "nav_msgs/msg/occupancy_grid.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
 #include "nav_msgs/srv/get_map.hpp"
 #include "nav2_msgs/srv/load_map.hpp"
+#include "nav2_msgs/srv/update_map.hpp"
 
 namespace nav2_map_server
 {
@@ -91,6 +96,10 @@ protected:
     const std::string & yaml_file,
     std::shared_ptr<nav2_msgs::srv::LoadMap::Response> response);
 
+  bool updateMapResponseFromYaml(
+    const std::string & yaml_file,
+    std::shared_ptr<nav2_msgs::srv::UpdateMap::Response> response);
+
   /**
    * @brief Method correcting msg_ header when it belongs to instantiated object
    */
@@ -118,11 +127,30 @@ protected:
     const std::shared_ptr<nav2_msgs::srv::LoadMap::Request> request,
     std::shared_ptr<nav2_msgs::srv::LoadMap::Response> response);
 
+  /**
+   * @brief Map updating service callback
+   * @param request_header Service request header
+   * @param request Service request
+   * @param response Service response
+   */
+  void updateMapCallback(
+    const std::shared_ptr<rmw_request_id_t> request_header,
+    const std::shared_ptr<nav2_msgs::srv::UpdateMap::Request> request,
+    std::shared_ptr<nav2_msgs::srv::UpdateMap::Response> response);
+
+  void poseCallback(const geometry_msgs::msg::PoseStamped::SharedPtr msg);
+
+  bool updateMapInternally(std::shared_ptr<nav2_msgs::srv::UpdateMap::Response> response);
+
+
   // The name of the service for getting a map
   const std::string service_name_{"map"};
 
   // The name of the service for loading a map
   const std::string load_map_service_name_{"load_map"};
+
+  // The name of the service for updating a map
+  const std::string update_map_service_name_{"update_map"};
 
   // A service to provide the occupancy grid (GetMap) and the message to return
   rclcpp::Service<nav_msgs::srv::GetMap>::SharedPtr occ_service_;
@@ -130,14 +158,28 @@ protected:
   // A service to load the occupancy grid from file at run time (LoadMap)
   rclcpp::Service<nav2_msgs::srv::LoadMap>::SharedPtr load_map_service_;
 
+  // A service to update the occupancy grid at run time (UpdateMap)
+  rclcpp::Service<nav2_msgs::srv::UpdateMap>::SharedPtr update_map_service_;
+
+  rclcpp::Subscription<geometry_msgs::msg::PoseStamped>::SharedPtr pose_subscriber_;
+
+  std::shared_ptr<geometry_msgs::msg::PoseStamped> latest_pose_;
+
   // A topic on which the occupancy grid will be published
   rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::OccupancyGrid>::SharedPtr occ_pub_;
 
   // The frame ID used in the returned OccupancyGrid message
   std::string frame_id_;
 
+  std::string yaml_filename;
+
+  std::vector<std::pair<std::array<int, 4>, std::string>> combined_zones;
+
   // The message to publish on the occupancy grid topic
   nav_msgs::msg::OccupancyGrid msg_;
+
+  // A variable to store zone locations
+  std::vector<std::pair<std::string, std::array<int, 4>>> filename_zones;
 
   // true if msg_ was initialized
   bool map_available_;
