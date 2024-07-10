@@ -13,9 +13,19 @@ import math
 class MapServer(Node):
     def __init__(self):
         super().__init__('map_server')
-        self.declare_parameter('map_yaml_file', 'path/to/map.yaml')
-        self.map_yaml_file = self.get_parameter('map_yaml_file').get_parameter_value().string_value
+        #self.declare_parameter('map_yaml_file', 'path/to/map.yaml')
+        self.map_yaml_file = self.get_parameter('yaml_filename').get_parameter_value().string_value
+        self.zone_yaml_files = self.get_parameter('yaml_filenames').get_parameter_value().string_value
+        self.topic_name = self.get_parameter('topic_name').get_parameter_value().string_value
         self.map_msg = None  # This will store the map data loaded from the YAML file
+
+        self.zone_boundaries_dict = {
+            "zone1": [3, 368],
+            "zone2": [202, 6],
+            "zone3": [5, 680],
+            "zone4": [564, 2],
+            "zone5": [566, 629]
+        }
 
         self.get_map_service = self.create_service(GetMap, 'get_map', self.get_map_callback)
         self.load_map_service = self.create_service(LoadMap, 'load_map', self.load_map_callback)
@@ -47,6 +57,20 @@ class MapServer(Node):
         # Create a service that loads the occupancy grid from a file
         self.load_map_service = self.create_service(
             LoadMap, service_prefix + self.load_map_service_name, self.load_map_callback)
+        
+                # Only try to load map if parameter was set
+        if self.map_yaml_file:
+            # Initialize response for LoadMap service
+            response = LoadMap.Response()
+
+            try:
+                if self.load_map_from_yaml(self.map_yaml_file, response):
+                    self.occ_pub.publish(self.map_msg)
+                else:
+                    self.get_logger().error(f"Failed to load map yaml file: {self.map_yaml_file}")
+            except Exception as e:
+                self.get_logger().error(f"Exception occurred: {str(e)}")
+
 
     def pose_callback(self, msg):
         """Callback function for the robot's pose."""
@@ -70,6 +94,7 @@ class MapServer(Node):
             return response
 
         self.get_logger().info("Handling LoadMap request")
+        
         if self.load_map_response_from_yaml(request.map_url, response):
             self.map_publisher.publish(self.map_msg)  # Publish the new map
         return response

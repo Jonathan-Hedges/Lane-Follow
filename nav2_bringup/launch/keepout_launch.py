@@ -16,6 +16,7 @@
 
 import os
 import tempfile
+import json
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
 from launch.conditions import IfCondition
@@ -64,6 +65,7 @@ def generate_launch_description():
 
     # Launch config for keepout filters
     mask_yaml_file = LaunchConfiguration('mask')
+    mask_yaml_files = LaunchConfiguration('masks')
     container_name = LaunchConfiguration('container_name')
     container_name_full = (namespace, '/', container_name)
 
@@ -113,7 +115,20 @@ def generate_launch_description():
     declare_mask_yaml_cmd = DeclareLaunchArgument(
         'mask',
         default_value=os.path.join(bringup_dir, 'maps', 'keepout_zone1.yaml'),  # Try warehouse.yaml!
-        description='Full path to map file to load',
+        description='Full path to initial mask file to load',
+    )
+
+    declare_mask_yamls_cmd = DeclareLaunchArgument(
+        'masks',
+        default_value=json.dumps([
+            os.path.join(bringup_dir, 'maps', 'keepout_zone1.yaml'),
+            os.path.join(bringup_dir, 'maps', 'keepout_zone2.yaml'),
+            os.path.join(bringup_dir, 'maps', 'keepout_zone3.yaml'),
+            os.path.join(bringup_dir, 'maps', 'keepout_zone4.yaml'),
+            os.path.join(bringup_dir, 'maps', 'keepout_zone5.yaml'),
+            os.path.join(bringup_dir, 'maps', 'zone_free.yaml')
+        ]),
+        description='JSON list of full paths to map files to load',
     )
 
     declare_container_name_cmd = DeclareLaunchArgument(
@@ -285,6 +300,7 @@ def generate_launch_description():
     param_substitutions = {
         'use_sim_time': use_sim_time,
         'yaml_filename': mask_yaml_file,
+        'yaml_filenames': mask_yaml_files,
         'default_nav_to_pose_bt_xml': os.path.join(pkg_share, 'behavior_trees', 'navigate_to_pose_w_replanning_and_recovery_2.xml'),
         'default_nav_through_poses_bt_xml': os.path.join(pkg_share, 'behavior_trees', 'navigate_through_poses_w_replanning_and_recovery_2.xml')
         }
@@ -369,6 +385,7 @@ def generate_launch_description():
     ld.add_action(declare_use_sim_time_cmd)
     ld.add_action(declare_params_file_cmd)
     ld.add_action(declare_mask_yaml_cmd)
+    ld.add_action(declare_mask_yamls_cmd)
     ld.add_action(declare_autostart_cmd)
     ld.add_action(declare_use_composition_cmd)
 
@@ -393,7 +410,7 @@ def generate_launch_description():
     ld.add_action(declare_container_name_cmd)
 
     ld.add_action(load_nodes)
-    ld.add_action(load_composable_nodes)
+    #ld.add_action(load_composable_nodes)
 
     # Add the actions to launch all of the navigation nodes
     ld.add_action(start_robot_state_publisher_cmd)
