@@ -72,6 +72,11 @@
       <input_port name="reset_distance">Distance from the robot under which obstacles are cleared</input_port>
     </Action>
 
+    <Action ID="UpdateKeepoutService">
+      <input_port name="service_name">Service name</input_port>
+      <input_port name="server_timeout">Server timeout</input_port>
+    </Action>
+
     <Action ID="ComputePathToPose">
       <input_port name="goal">Destination to plan to</input_port>
       <input_port name="start">Start pose of the path if overriding current robot pose</input_port>
