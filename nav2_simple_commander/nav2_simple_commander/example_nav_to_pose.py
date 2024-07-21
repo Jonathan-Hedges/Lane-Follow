@@ -54,12 +54,21 @@ def main():
     # global_costmap = navigator.getGlobalCostmap()
     # local_costmap = navigator.getLocalCostmap()
 
+    # Zone locations mapped as locations in the map [top left x,y , bottom right x,y]
+    zones = [
+        [-0.5, -14, 4, -16.5],
+        [9, 20, 12, 16],
+        [-0.5, 2, 3, -1],
+        [27.5, 20, 32, 16],
+        [27.5, -10, 32, -14.5]
+    ];
     # Go to our demos first goal pose
+    # Go to top left zone
     goal_pose = PoseStamped()
     goal_pose.header.frame_id = 'map'
     goal_pose.header.stamp = navigator.get_clock().now().to_msg()
-    goal_pose.pose.position.x = 17.86
-    goal_pose.pose.position.y = -0.77
+    goal_pose.pose.position.x = 11.0
+    goal_pose.pose.position.y = 18.0
     goal_pose.pose.orientation.w = 1.0
     goal_pose.pose.orientation.z = 0.0
 
@@ -90,11 +99,13 @@ def main():
             )
 
             # Some navigation timeout to demo cancellation
-            if Duration.from_msg(feedback.navigation_time) > Duration(seconds=600.0):
+
+            # Bug!! seconds = seconds/100 for some reason
+            if Duration.from_msg(feedback.navigation_time) > Duration(seconds=180000.0):
                 navigator.cancelTask()
 
             # Some navigation request change to demo preemption
-            if Duration.from_msg(feedback.navigation_time) > Duration(seconds=18.0):
+            if Duration.from_msg(feedback.navigation_time) > Duration(seconds=1800.0):
                 goal_pose.pose.position.x = 0.0
                 goal_pose.pose.position.y = 0.0
                 navigator.goToPose(goal_pose)
@@ -110,7 +121,8 @@ def main():
     else:
         print('Goal has an invalid return status!')
 
-    navigator.lifecycleShutdown()
+    # By allowing this, you must call the launch file again
+    # navigator.lifecycleShutdown()
 
     exit(0)
 
