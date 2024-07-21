@@ -259,6 +259,8 @@ void MapServer::updateMapCallback(
   const std::shared_ptr<nav2_msgs::srv::UpdateMap::Request> /*request*/,
   std::shared_ptr<nav2_msgs::srv::UpdateMap::Response> response)
 {
+  RCLCPP_INFO(
+    logger_, "Called the update!!");
   // if not in ACTIVE state, ignore request
   if (get_current_state().id() != lifecycle_msgs::msg::State::PRIMARY_STATE_ACTIVE) {
     RCLCPP_WARN(
