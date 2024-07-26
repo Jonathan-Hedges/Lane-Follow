@@ -94,11 +94,11 @@ MapServer::on_configure(const rclcpp_lifecycle::State & /*state*/)
 
   // Example declaration, adjust the types according to your needs
   std::vector<std::array<int, 4>> zones = {
-    {3, 368, 93, 458},
-    {202, 6, 292, 96},
-    {5, 680, 96, 766},
-    {564, 2, 684, 92},
-    {566, 629, 686, 729}
+      {-0.5, -14, 4, -16.5},
+      {9, 20, 12, 16},
+      {-0.5, 2, 3, -1},
+      {27.5, 20, 32, 16},
+      {27.5, -10, 32, -14.5}
   };
 
   std::string file_prefix = yaml_filename.substr(0, yaml_filename.find_last_of("/"));

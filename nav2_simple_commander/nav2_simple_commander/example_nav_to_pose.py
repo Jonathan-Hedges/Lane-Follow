@@ -13,10 +13,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, Pose
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 import rclpy
+import os
 from rclpy.duration import Duration
+from ros_gz_interfaces.srv import SpawnEntity
+from ros_gz_interfaces.msg import EntityFactory
+from ament_index_python.packages import get_package_share_directory
+
 
 """
 Basic navigation demo to go to pose.
@@ -46,6 +51,43 @@ def main():
     # Wait for navigation to fully activate, since autostarting nav2
     navigator.waitUntilNav2Active()
 
+    #     # Create a client for the SpawnEntity service
+    # node = rclpy.create_node('spawn_entity_client')
+    # client = node.create_client(SpawnEntity, 'spawn_entity')
+
+    # # Wait for the service to be available
+    # while not client.wait_for_service(timeout_sec=1.0):
+    #     node.get_logger().info('SpawnEntity service not available, waiting again...')
+
+    # # Create a request with the desired parameters
+    # request = SpawnEntity.Request()
+    # request.name = 'cube'  # Name of the entity to spawn
+    # request.allow_renaming = False
+    # request.sdf = ''  # SDF description as a string, if applicable
+
+    # bringup_dir = get_package_share_directory('nav2_bringup')
+    # default_value=os.path.join(bringup_dir, 'worlds', 'cube.sdf')
+
+    # request.sdf_filename = default_value  # Path to SDF file, if applicable
+    # request.clone_name = ''  # Name of entity to clone, if applicable
+    # request.pose = Pose()  # Set the desired pose
+    # request.pose.position.x = 1.0
+    # request.pose.position.y = 1.0
+    # request.pose.orientation.w = 1.0
+    # request.relative_to = 'world'
+
+    # # Call the service and wait for the response
+    # future = client.call_async(request)
+    # rclpy.spin_until_future_complete(node, future)
+    # try:
+    #     response = future.result()
+    #     node.get_logger().info('SpawnEntity call succeeded')
+    # except Exception as e:
+    #     node.get_logger().error('Service call failed %r' % (e,))
+
+    # # Don't forget to shutdown
+    # rclpy.shutdown()
+
     # If desired, you can change or load the map as well
     # navigator.changeMap('/path/to/map.yaml')
 
@@ -61,7 +103,7 @@ def main():
         [-0.5, 2, 3, -1],
         [27.5, 20, 32, 16],
         [27.5, -10, 32, -14.5]
-    ];
+    ]
     # Go to our demos first goal pose
     # Go to top left zone
     goal_pose = PoseStamped()
@@ -75,6 +117,8 @@ def main():
     # sanity check a valid path exists
     # path = navigator.getPath(initial_pose, goal_pose)
 
+    # why do none of these change map functions work?
+    # navigator.changeMap('/nav2_ws/src/navigation2/nav2_bringup/maps/zone_free.yaml')
     navigator.goToPose(goal_pose)
 
     i = 0
@@ -92,7 +136,8 @@ def main():
             print(
                 'Estimated time of arrival: '
                 + '{0:.0f}'.format(
-                    Duration.from_msg(feedback.estimated_time_remaining).nanoseconds
+                    Duration.from_msg(
+                        feedback.estimated_time_remaining).nanoseconds
                     / 1e9
                 )
                 + ' seconds.'
